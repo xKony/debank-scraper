@@ -10,6 +10,8 @@ This project is a high-performance, asynchronous tool designed to fetch crypto p
 
 Built using `nodriver` for robust browser automation, this tool is engineered to evade detection through fingerprint randomization, User-Agent rotation, and integrated NordVPN IP switching. It processes a list of wallet addresses and generates comprehensive reports in both CSV and XLSX _(MS Excel)_ formats, organizing data by Total Balance, Chains and Projects.
 
+*Partially **vibe-coded**, built for broke people like me that need to check balances for multiple addresses but don't have money to use Debank API.*
+
 ## ✨ Key Features
 
 - **Asynchronous Concurrency:** Uses `asyncio` with Semaphores to process multiple addresses simultaneously without overloading system resources.
@@ -79,7 +81,6 @@ All settings are managed in config.py. Below is a breakdown of available options
 | `MINIMUM_THRESHOLD_CHAIN`   | `float` | Minimum USD value to include a chain in the report. |
 | `MINIMUM_THRESHOLD_PROJECT` | `float` | Minimum USD value to include a project position.    |
 | `MAX_THREADS`               | `int`   | Number of concurrent browser instances/tabs.        |
-|                             |
 
 ### Data Processing
 

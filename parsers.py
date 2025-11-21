@@ -11,14 +11,14 @@ async def parse_chain_element(element_text: str) -> tuple[str | None, int | None
     if "$" not in element_text:
         return None, None
 
-    # nazwa chaina = wszystko przed $
+    # chain name = everything before $
     dollar_index = element_text.index("$")
     chain_name = element_text[:dollar_index].strip()
 
-    # usd_value = token od $ do spacji po liczbie
-    usd_value_str = element_text[dollar_index:].split()[0]  # np. "$6,004"
+    # usd_value = token from $ to the space after the number
+    usd_value_str = element_text[dollar_index:].split()[0]  # e.g., "$6,004"
 
-    # konwersja do liczby całkowitej
+    # conversion to integer
     try:
         usd_value_num = int(usd_value_str.replace("$", "").replace(",", ""))
     except ValueError:
@@ -35,12 +35,12 @@ async def parse_project_element(line: str) -> tuple[str | None, int | None]:
     if "$" not in line:
         return None, None
 
-    # nazwa = wszystko przed $
+    # name = everything before $
     dollar_index = line.index("$")
     project_name = line[:dollar_index].strip()
 
-    # usd_value = pierwszy token od $
-    usd_value_str = line[dollar_index:].split()[0]  # np. "$1,324"
+    # usd_value = first token from $
+    usd_value_str = line[dollar_index:].split()[0]  # e.g., "$1,324"
 
     try:
         usd_value_num = int(usd_value_str.replace("$", "").replace(",", ""))
@@ -56,7 +56,7 @@ async def parse_project_element(line: str) -> tuple[str | None, int | None]:
 async def parse_balance_with_percent(text: str) -> float:
 
     match = re.match(r"\s*\$([\d,.\s]+)", text)
-    
+
     if not match:
         return 0.0
 
@@ -77,12 +77,12 @@ async def parse_token_element(
     if "$" not in line:
         return None, None, None
 
-    # nazwa = wszystko przed $
+    # name = everything before $
     dollar_index = line.index("$")
     token_name = line[:dollar_index].strip()
 
-    # usd_value = pierwszy token od $
-    usd_value_str = line[dollar_index:].split()[0]  # np. "$1,324"
+    # usd_value = first token from $
+    usd_value_str = line[dollar_index:].split()[0]  # e.g., "$1,324"
     try:
         usd_value_num = float(usd_value_str.replace("$", "").replace(",", ""))
     except ValueError:
@@ -91,7 +91,7 @@ async def parse_token_element(
     if usd_value_num < MINIMUM_THRESHOLD_PROJECT:
         return None, None, None
 
-    # amount = jeśli w stringu jest separator "|" to bierz drugą część
+    # amount = if separator "|" is in the string, take the second part
     amount = 0.0
     if "|" in token_name:
         parts = token_name.split("|")

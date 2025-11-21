@@ -73,7 +73,6 @@ async def main(addresses_map: dict):
         except Exception as e:
             print(f"⚠️ Initial VPN rotation failed: {e}")
 
-    # --- NEW: Global Counter ---
     processed_count = 0
 
     # --- BATCH LOOP ---
@@ -126,10 +125,10 @@ if __name__ == "__main__":
     try:
         address_order_map = reporter.load_address_order(ADDRESSES_FILE)
         if not address_order_map:
-            print(f"Error: Nie znaleziono adresów w {ADDRESSES_FILE}.")
+            print(f"Error: No addresses found in {ADDRESSES_FILE}.")
             exit(1)
     except FileNotFoundError:
-        print(f"Error: Plik '{ADDRESSES_FILE}' nie został znaleziony.")
+        print(f"Error: File ‘{ADDRESSES_FILE}’ not found.")
         exit(1)
 
     # pass address list to reporter
@@ -139,5 +138,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main(address_order_map))
     except KeyboardInterrupt:
-        print("Skrypt przerwany przez użytkownika.")
+        print("Script interrupted by user.")
         exit(0)
