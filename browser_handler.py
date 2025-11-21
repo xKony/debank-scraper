@@ -19,6 +19,9 @@ from config import (
 from reporter import write_raw_row
 from random import uniform
 import asyncio
+from logger import get_logger
+
+log = get_logger(__name__)
 
 
 class DebankProfile:
@@ -30,36 +33,46 @@ class DebankProfile:
         self.user_data_dir = None
 
     async def start_browser(self):
-        print("Starting browser for", self.address)
+        log.debug(f"Starting browser for {self.address}")
         self.working = True
         try:
             # We wrap the creation in a try/except to catch the timeout cancellation immediately
             self.browser = await nodriver_utils.get_new_driver()
             self.page = await self.browser.get(f"{DEBANK_URL}{self.address}")
+
             if hasattr(self.browser, "config") and hasattr(
                 self.browser.config, "user_data_dir"
             ):
                 self.user_data_dir = self.browser.config.user_data_dir
+
             await self.page.find(
                 "Data updated", best_match=True, timeout=20
             )  # when this element appears the page should be fully loaded
+
             await asyncio.sleep(uniform(0.5, 1.5))  # ensure full load
+
             # parse total balance and check for 0$ (if balance = 0, skip further parsing)
             balance = await self.page.select("div[class*='HeaderInfo_totalAssetInner']")
-            print(balance.text_all)
+
+            # Log raw text only in debug mode
+            log.debug(f"Raw balance text for {self.address}: {balance.text_all}")
+
             if balance.text_all:
                 bal_value = await parse_balance_with_percent(balance.text_all)
                 write_raw_row(self.address, "total", "Total Balance", bal_value)
+
                 if bal_value == 0.0:
-                    print(f"⚠️ Address {self.address} has 0$ balance, skipping.")
+                    log.warning(
+                        f"Address {self.address} has 0$ balance, skipping further parsing."
+                    )
                     # set working to false to skip further parsing
                     self.working = False
 
         except asyncio.CancelledError:
-            print(f"⚠️ Browser start cancelled for {self.address}")
+            log.warning(f"Browser start cancelled for {self.address}")
             raise
         except Exception as e:
-            print(f"⚠️ Error in start_browser: {e}")
+            log.error(f"Error in start_browser for {self.address}: {e}")
             raise e
 
     async def close_browser(self):
@@ -70,18 +83,18 @@ class DebankProfile:
 
                 # 2. Wait for Windows to release file locks (Critical!)
                 await asyncio.sleep(1.5)
-                print(f"Closed browser for {self.address}")
-                # delete temp user data dir, nodriver only does this once the script exits so to prevent wasting space
-                # script does it manually here after closing the browser
+                log.debug(f"Closed browser for {self.address}")
+
+                # delete temp user data dir
                 if self.user_data_dir and os.path.exists(self.user_data_dir):
                     try:
                         shutil.rmtree(self.user_data_dir, ignore_errors=True)
-                        print(f"🧹 Cleaned up temp profile: {self.user_data_dir}")
+                        log.debug(f"Cleaned up temp profile: {self.user_data_dir}")
                     except Exception as e:
-                        print(f"⚠️ Could not delete temp dir: {e}")
+                        log.warning(f"Could not delete temp dir: {e}")
 
             except Exception as e:
-                print(f"⚠️ Error closing browser: {e}")
+                log.error(f"Error closing browser for {self.address}: {e}")
             finally:
                 self.browser = None
                 self.working = False
@@ -90,7 +103,7 @@ class DebankProfile:
 
     # parsing methods
     async def parse_chains(self):
-        if self.working and CHAINS:
+        if self.working and CHAINS and self.page:
             # element that contains all chains
             chain_elements = await self.page.select_all(
                 "div[class*='AssetsOnChain_filterable']"
@@ -104,7 +117,9 @@ class DebankProfile:
                 chain_elements = await self.page.select_all(
                     "div[class*='AssetsOnChain_filterable']"
                 )
-            print(f"Found {len(chain_elements)} chains")
+
+            log.debug(f"Found {len(chain_elements)} chains for {self.address}")
+
             # loop through chains and parse
             for chain_element in chain_elements:
                 if (MAX_CHAINS > 0) and (
@@ -117,7 +132,7 @@ class DebankProfile:
                     write_raw_row(self.address, "Chain", name, value)
 
     async def parse_projects(self):
-        if self.working and PROJECTS:
+        if self.working and PROJECTS and self.page:
             # element that contains all projects
             project_elements = await self.page.select_all(
                 "div[class*='ProjectCell_assetsItemName']"
@@ -134,7 +149,9 @@ class DebankProfile:
                 project_elements = await self.page.select_all(
                     "div[class*='ProjectCell_assetsItemName']"
                 )
-            print(f"Found {len(project_elements)} projects")
+
+            log.debug(f"Found {len(project_elements)} projects for {self.address}")
+
             # iterate through projects and parse if valid
             for portfolio_element in project_elements:
                 if (MAX_PROJECTS > 0) and (
@@ -151,12 +168,12 @@ class DebankProfile:
         token_elements = await self.page.select_all(
             "div[class^='db-table TokenWallet_table'] div[class*='db-table-row']"
         )
-        print(f"Found {len(token_elements)} tokens")
+        log.debug(f"Found {len(token_elements)} tokens")
         await asyncio.sleep(uniform(0.5, 1.0))
         token_elements = await self.page.select_all(
             "div[class^='db-table TokenWallet_table'] div[class*='db-table-row']"
         )
-        print(f"Found {len(token_elements)} tokens")
+        log.debug(f"Found {len(token_elements)} tokens")
         for token_element in token_elements:
 
             index = token_elements.index(token_element)

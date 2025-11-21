@@ -4,13 +4,15 @@
 ![Asyncio](https://img.shields.io/badge/Asyncio-Concurrency-green)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
+<sub>this is my first Python project using an object-oriented structure - still learning</sub>
+
 ## 📋 Overview
 
 This project is a high-performance, asynchronous tool designed to fetch crypto portfolio balances from DeBank.
 
 Built using `nodriver` for robust browser automation, this tool is engineered to evade detection through fingerprint randomization, User-Agent rotation, and integrated NordVPN IP switching. It processes a list of wallet addresses and generates comprehensive reports in both CSV and XLSX _(MS Excel)_ formats, organizing data by Total Balance, Chains and Projects.
 
-*Partially **vibe-coded**, built for broke people like me that need to check balances for multiple addresses but don't have money to use Debank API.*
+_Partially **vibe-coded**, built for broke people like me that need to check balances for multiple addresses but don't have money to use Debank API._
 
 ## ✨ Key Features
 
@@ -29,16 +31,18 @@ Built using `nodriver` for robust browser automation, this tool is engineered to
 ## 📂 Project Structure
 
 ```text
+└── results/             # Generated CSV/XLSX files
+└── logs/                # Saved logs (optional)
+├── addresses.txt        # Input file containing wallet addresses
+├── proxies.txt          # Input file for proxies (optional, not working anyway)
 ├── browser_handler.py   # Handles DeBank class, parsing and navigation
 ├── nodriver_utils.py    # Handles nodriver initialization
 ├── nordvpn_utils.py     # Handles NordVPN rotation
 ├── reporter.py          # Manages data aggregation, formatting, and file writing
 ├── config.py            # Central configuration file for thresholds and settings
 ├── main.py              # Entry point (orchestrator)
-├── addresses.txt        # Input file containing wallet addresses
 ├── parsers.py           # Handles parsing balances to correct format
-├── proxies.txt          # Input file for proxies (optional)
-└── results/             # Generated CSV/XLSX files
+├── logger.py            # Logs things
 ```
 
 ## ⚙️ Installation
@@ -91,6 +95,8 @@ All settings are managed in config.py. Below is a breakdown of available options
 | `ADDRESSES_FILE`   | `str`  | Path to the input list of addresses.                               |
 | `HEADLESS_BROWSER` | `bool` | Run browser in background (True) or visible (False). `(debugging)` |
 
+<sub>_more in `config.py`_</sub>
+
 ## 🚀 Usage
 
 1.**Prepare Input:**
@@ -119,8 +125,7 @@ This tool is developed for **educational purposes only**.
 
 - proxy handling
 - token parsing
-- add logging
 
-📜 License
+## 📜 License
 
 **MIT**

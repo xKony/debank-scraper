@@ -28,4 +28,4 @@ def handle_critical_error(switcher: VpnSwitcher):
     except NordVpnConnectionError as e:
         print(f"[VPN] Retry failed: {e}. Waiting 15s before next attempt...")
         time.sleep(15)
-        handle_critical_error()
+        handle_critical_error(switcher)

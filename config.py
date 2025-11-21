@@ -29,5 +29,6 @@ ADDRESSES_FILE = "addresses.txt"  # file with list of addresses to process
 PROXY_FILE = "proxies.txt"  # file with list of proxies to use (if USE_PROXY is True)
 
 ### OTHER SETTINGS ###
-SAVE_LOGS = True  # whether to save browser logs to files
+LOG_LEVEL = "INFO"  # logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+SAVE_LOGS = False  # whether to save browser logs to files
 HEADLESS_BROWSER = True  # whether to run browser in headless mode

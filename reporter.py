@@ -1,4 +1,3 @@
-# reporter.py
 import csv
 from pathlib import Path
 from datetime import datetime
@@ -7,6 +6,10 @@ from collections import defaultdict
 from openpyxl import Workbook
 from config import CSV_OUTPUT, EXCEL_OUTPUT, ADDRESSES_FILE
 import os
+from logger import get_logger
+
+# Initialize Logger
+log = get_logger(__name__)
 
 lock = threading.Lock()
 timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -33,8 +36,10 @@ def load_address_order(path: str):
     p = Path(path)
     order = {}
     if not p.exists():
-        print(f"Warning: File {path} does not exist. Fallback sorting.")
+        log.warning(f"File {path} does not exist. Fallback sorting will be used.")
         return order
+
+    log.debug(f"Loading address order from: {path}")
     with p.open("r", encoding="utf-8") as f:
         for i, line in enumerate(f):
             addr = line.strip()
@@ -48,7 +53,7 @@ def init_reporter(address_order_map: dict):
     """Initializes the reporter with the loaded address order map."""
     global _address_order
     _address_order = address_order_map
-    print(f"Reporter initialized with {len(_address_order)} addresses.")
+    log.info(f"Reporter initialized with {len(_address_order)} addresses.")
 
 
 # function to write a single raw row (thread-safe)
@@ -68,6 +73,9 @@ def write_raw_row(wallet_address: str, row_type: str, name: str, usd_value):
         }
         _raw_rows.append(row)
 
+        # Debug log for individual row writes (can be noisy, so kept at DEBUG)
+        log.debug(f"Row added: {wallet_address[:6]}... | {row_type} | {usd_f}")
+
         # append to raw csv immediately
         write_header = not RAW_CSV.exists()
         with RAW_CSV.open("a", newline="", encoding="utf-8") as f:
@@ -84,8 +92,10 @@ def write_raw_row(wallet_address: str, row_type: str, name: str, usd_value):
 
 def _sort_raw_rows(rows):
     if not _address_order:
-        # fallback: sort by address
+        log.debug("Sorting by address string (Fallback).")
         return sorted(rows, key=lambda r: r["Wallet Address"])
+
+    log.debug("Sorting by predefined address order.")
 
     def keyfn(r):
         addr = r["Wallet Address"]
@@ -95,6 +105,7 @@ def _sort_raw_rows(rows):
 
 
 def _aggregate(rows):
+    log.debug(f"Aggregating {len(rows)} raw rows...")
     chain_map = defaultdict(lambda: defaultdict(float))
     portfolio_map = defaultdict(lambda: defaultdict(float))
     token_data = defaultdict(lambda: defaultdict(lambda: {"USD": 0.0, "AMOUNT": 0.0}))
@@ -103,17 +114,17 @@ def _aggregate(rows):
     # 1. Process all raw rows to build the maps
     for r in rows:
         addr = r["Wallet Address"]
-        typ = r["Type"].strip().lower()
+        type = r["Type"].strip().lower()
         name = r["Name"]
         usd = float(r["USD Value"] or 0.0)
 
-        if typ == "total":
+        if type == "total":
             total_map[addr] = usd  # Total balance is collected
-        elif typ == "chain":
+        elif type == "chain":
             chain_map[addr][name] += usd
-        elif typ == "project":
+        elif type == "project":
             portfolio_map[addr][name] += usd
-        elif typ == "token":
+        elif type == "token":
             parts = name.split("|")
             token_name = parts[0].strip()
             amount = 0.0
@@ -135,9 +146,9 @@ def _aggregate(rows):
             total_map[addr] = 0.0
 
         if addr not in chain_map:
-            chain_map[addr] = {}
+            chain_map[addr] = {}  # type: ignore
         if addr not in portfolio_map:
-            portfolio_map[addr] = {}
+            portfolio_map[addr] = {}  # type: ignore
 
     return total_map, chain_map, portfolio_map, token_data
 
@@ -151,6 +162,7 @@ def _collect_columns(map_by_addr):
 
 
 def _write_portfolio_csv(total_map, chain_map, portfolio_map, token_map):
+    log.debug("Preparing Portfolio CSV structure...")
     chain_cols = _collect_columns(chain_map)
     port_cols = _collect_columns(portfolio_map)
     token_cols = sorted(token_map.keys())
@@ -171,7 +183,6 @@ def _write_portfolio_csv(total_map, chain_map, portfolio_map, token_map):
             writer.writerow(["Total Balance"])
             writer.writerow(["Wallet Address", "Total USD Value"])
             for addr in all_relevant_addrs:
-                # Use get(addr, 0.0) to handle addresses from the list with no balance (from _address_order)
                 row = [addr, total_map.get(addr, 0.0)]
                 writer.writerow(row)
             writer.writerow([])
@@ -216,6 +227,7 @@ def _write_portfolio_csv(total_map, chain_map, portfolio_map, token_map):
 
 
 def _write_xlsx(total_map, chain_map, portfolio_map, token_map):
+    log.debug("Preparing Excel (XLSX) structure...")
     # Check if we have any data at all to avoid saving an empty file
     has_total = bool(total_map and any(total_map.values()))
     chain_cols = _collect_columns(chain_map)
@@ -223,7 +235,7 @@ def _write_xlsx(total_map, chain_map, portfolio_map, token_map):
     token_cols = sorted(token_map.keys())
 
     if not (has_total or chain_cols or port_cols or token_cols):
-        # No data to save, exiting
+        log.warning("No data available to write to XLSX.")
         return
 
     wb = Workbook()
@@ -238,11 +250,10 @@ def _write_xlsx(total_map, chain_map, portfolio_map, token_map):
 
     # Remove default sheet
     if wb.sheetnames == ["Sheet"]:
-        wb.remove(wb.active)
+        wb.remove(wb.active)  # type: ignore
 
     # 1. TOTAL Sheet (FIRST SHEET)
     if has_total:
-        # Create as the first sheet (index 0)
         ws_total = wb.create_sheet("Total", 0)
         ws_total.append(["Wallet Address", "Total USD Value"])
         for addr in all_relevant_addrs:
@@ -286,7 +297,6 @@ def _write_xlsx(total_map, chain_map, portfolio_map, token_map):
     if wb.sheetnames:
         wb.save(XLSX_FILE)
     else:
-        # This condition is extra, as we check at the beginning
         if XLSX_FILE.exists():
             os.remove(XLSX_FILE)
 
@@ -294,18 +304,20 @@ def _write_xlsx(total_map, chain_map, portfolio_map, token_map):
 def finalize_outputs():
     with lock:
         if not _raw_rows and not _address_order:
-            print("No data to finalize.")
+            log.warning("No data to finalize (empty rows and address order).")
             return
 
         if not CSV_OUTPUT and not EXCEL_OUTPUT:
+            # This is a configuration error, so strictly speaking it's an ERROR
+            log.error("At least one of CSV_OUTPUT or EXCEL_OUTPUT must be True.")
             raise RuntimeError(
                 "At least one of CSV_OUTPUT or EXCEL_OUTPUT must be True"
             )
 
-        print("Sorting raw data...")
+        log.debug("Sorting raw data...")
         sorted_rows = _sort_raw_rows(_raw_rows)
 
-        print("Overwriting sorted RAW CSV...")
+        log.debug("Overwriting sorted RAW CSV...")
         with RAW_CSV.open("w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
             writer.writerow(RAW_HEADER)
@@ -314,25 +326,23 @@ def finalize_outputs():
                     [r["Wallet Address"], r["Type"], r["Name"], r["USD Value"]]
                 )
 
-        print("Aggregating data...")
-        # Updated name and order of return values
+        log.debug("Aggregating data...")
         total_map, chain_map, portfolio_map, token_map = _aggregate(sorted_rows)
 
         # save portfolio CSV
         if CSV_OUTPUT:
-            print("Saving portfolio CSV...")
-            # Added total_map to arguments
+            log.info("Saving portfolio CSV...")
             _write_portfolio_csv(total_map, chain_map, portfolio_map, token_map)
 
         # save XLSX
         if EXCEL_OUTPUT:
-            print("Saving portfolio XLSX...")
-            # Added total_map to arguments
+            log.info("Saving portfolio XLSX...")
             _write_xlsx(total_map, chain_map, portfolio_map, token_map)
 
-        print("Finalization complete.")
-        print(f"Raw data: {RAW_CSV}")
+        log.info("Finalization complete.")
+        log.info(f"Raw data: {RAW_CSV}")
+
         if CSV_OUTPUT:
-            print(f"Portfolio CSV: {PORTFOLIO_CSV}")
+            log.info(f"Portfolio CSV: {PORTFOLIO_CSV}")
         if EXCEL_OUTPUT:
-            print(f"Portfolio XLSX: {XLSX_FILE}")
+            log.info(f"Portfolio XLSX: {XLSX_FILE}")
