@@ -27,13 +27,16 @@ Built using `nodriver` for robust browser automation, this tool is engineered to
 ## 📂 Project Structure
 
 ```text
-├── browser_handler.py   # Handles DeBank class, nodriver initialization, and navigation
+├── browser_handler.py   # Handles DeBank class, parsing and navigation
+├── nodriver_utils.py    # Handles nodriver initialization
+├── nordvpn_utils.py     # Handles NordVPN rotation
 ├── reporter.py          # Manages data aggregation, formatting, and file writing
 ├── config.py            # Central configuration file for thresholds and settings
 ├── main.py              # Entry point (orchestrator)
 ├── addresses.txt        # Input file containing wallet addresses
+├── parsers.py           # Handles parsing balances to correct format
 ├── proxies.txt          # Input file for proxies (optional)
-└── output/              # Generated CSV/XLSX files
+└── results/             # Generated CSV/XLSX files
 ```
 
 ## ⚙️ Installation
