@@ -1,0 +1,4 @@
+nodriver
+fake-useragent
+openpyxl
+nordvpn-switcher-pro

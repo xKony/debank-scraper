@@ -1,0 +1,9 @@
+csv_to_txt.py
+monad.csv
+output.txt
+proxies.txt
+results/
+__pycache__/
+*.pyc
+nordvpn_settings.json
+logs/
