@@ -57,6 +57,9 @@ async def main(addresses_map: dict):
         log.warning("No addresses to process.")
         return
 
+    # Start the reporter background worker
+    reporter_task = asyncio.create_task(reporter.reporter_worker())
+
     # Convert dict items to a list for slicing
     all_items = list(addresses_map.items())
     total_items = len(all_items)
@@ -114,6 +117,10 @@ async def main(addresses_map: dict):
                 log.error(f"VPN Rotation failed: {e}")
 
     log.info("Every task finished.")
+
+    # Stop the reporter background worker
+    await reporter._report_queue.put(None)
+    await reporter_task
 
     # --- MOVED: Finalize reporter ONLY HERE ---
     log.info("Saving final report...")

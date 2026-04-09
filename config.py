@@ -4,7 +4,7 @@ from random import randint
 
 ### CONNECTION AND PRIVACY ###
 USE_PROXY = False  # whether to use proxy connection (not working right now)
-USE_NORDVPN = True  # whether to use nordvpn for IP rotation
+USE_NORDVPN = False  # whether to use nordvpn for IP rotation
 BATCH_SIZE = randint(
     10, 20
 )  # rotate nordvpn after X addresses (0 = no rotation) (if not using NORDVPN, this setting does nothing)
@@ -31,4 +31,4 @@ PROXY_FILE = "proxies.txt"  # file with list of proxies to use (if USE_PROXY is 
 ### OTHER SETTINGS ###
 LOG_LEVEL = "INFO"  # logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 SAVE_LOGS = False  # whether to save browser logs to files
-HEADLESS_BROWSER = True  # whether to run browser in headless mode
+HEADLESS_BROWSER = False  # whether to run browser in headless mode

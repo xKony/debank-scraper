@@ -1,4 +1,5 @@
 import csv
+import asyncio
 from pathlib import Path
 from datetime import datetime
 import threading
@@ -27,9 +28,10 @@ XLSX_FILE = XLSX_PATH / f"portfolio_{timestamp}.xlsx"
 # csv raw_data header
 RAW_HEADER = ["Wallet Address", "Type", "Name", "USD Value"]
 
-# we store raw rows in memory, then aggregate during finalize
+# Async Queue for non-blocking reporter
+_report_queue = asyncio.Queue()
 _raw_rows = []
-_address_order = {}  # Will be initialized by init_reporter
+_address_order = {}
 
 
 def load_address_order(path: str):
@@ -44,50 +46,85 @@ def load_address_order(path: str):
         for i, line in enumerate(f):
             addr = line.strip()
             if addr:
-                # Value is the index/order
                 order[addr] = i
     return order
 
 
 def init_reporter(address_order_map: dict):
-    """Initializes the reporter with the loaded address order map."""
     global _address_order
     _address_order = address_order_map
     log.info(f"Reporter initialized with {len(_address_order)} addresses.")
 
 
-# function to write a single raw row (thread-safe)
 def write_raw_row(wallet_address: str, row_type: str, name: str, usd_value):
-    with lock:
-        # normalize USD value to float (if possible)
-        try:
-            usd_f = float(usd_value)
-        except Exception:
-            usd_f = 0.0
+    """
+    Synchronous wrapper to put data into the async queue.
+    The main loop will handle the actual I/O via the worker.
+    """
+    try:
+        usd_f = float(usd_value)
+    except (ValueError, TypeError):
+        usd_f = 0.0
 
-        row = {
-            "Wallet Address": str(wallet_address),
-            "Type": str(row_type),
-            "Name": str(name),
-            "USD Value": usd_f,
-        }
+    row = {
+        "Wallet Address": str(wallet_address),
+        "Type": str(row_type),
+        "Name": str(name),
+        "USD Value": usd_f,
+    }
+
+    # We use thread-safe way to put into queue if called from multiple loops,
+    # but since this is currently single-loop async, we can use call_soon_threadsafe
+    # or just use a standard list if we are worried about async/sync mismatch.
+    # To keep it simple and non-blocking, we'll use the memory list + immediate file append
+    # in a background thread or task.
+
+    with lock:
         _raw_rows.append(row)
 
-        # Debug log for individual row writes (can be noisy, so kept at DEBUG)
-        log.debug(f"Row added: {wallet_address[:6]}... | {row_type} | {usd_f}")
-
-        # append to raw csv immediately
-        write_header = not RAW_CSV.exists()
-        with RAW_CSV.open("a", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            if write_header:
-                writer.writerow(RAW_HEADER)
-            writer.writerow(
-                [row["Wallet Address"], row["Type"], row["Name"], row["USD Value"]]
-            )
+    # Put into queue for the background worker to handle file I/O
+    try:
+        loop = asyncio.get_running_loop()
+        loop.call_soon_threadsafe(_report_queue.put_nowait, row)
+    except RuntimeError:
+        # No loop running (e.g. during startup/shutdown)
+        pass
 
 
-# --- (The rest of the functions are synchronous and private) ---
+async def reporter_worker():
+    """
+    Background task that consumes the queue and writes to CSV.
+    """
+    log.debug("Reporter worker started.")
+    while True:
+        row = await _report_queue.get()
+        if row is None:  # Sentinel to stop
+            _report_queue.task_done()
+            break
+
+        try:
+            # Synchronous write wrapped in to_thread to avoid blocking
+            await asyncio.to_thread(_append_to_csv, row)
+        except Exception as e:
+            log.error(f"Error in reporter worker: {e}")
+        finally:
+            _report_queue.task_done()
+    log.debug("Reporter worker stopped.")
+
+
+def _append_to_csv(row: dict):
+    """Internal helper for physical file I/O."""
+    write_header = not RAW_CSV.exists()
+    with RAW_CSV.open("a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if write_header:
+            writer.writerow(RAW_HEADER)
+        writer.writerow(
+            [row["Wallet Address"], row["Type"], row["Name"], row["USD Value"]]
+        )
+
+
+# --- Aggregation and Finalization (unchanged logic, optimized structure) ---
 
 
 def _sort_raw_rows(rows):

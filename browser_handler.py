@@ -58,7 +58,7 @@ class DebankProfile:
             log.debug(f"Raw balance text for {self.address}: {balance.text_all}")
 
             if balance.text_all:
-                bal_value = await parse_balance_with_percent(balance.text_all)
+                bal_value = parse_balance_with_percent(balance.text_all)
                 write_raw_row(self.address, "total", "Total Balance", bal_value)
 
                 if bal_value == 0.0:
@@ -121,12 +121,10 @@ class DebankProfile:
             log.debug(f"Found {len(chain_elements)} chains for {self.address}")
 
             # loop through chains and parse
-            for chain_element in chain_elements:
-                if (MAX_CHAINS > 0) and (
-                    chain_elements.index(chain_element) >= MAX_CHAINS
-                ):
+            for index, chain_element in enumerate(chain_elements):
+                if (MAX_CHAINS > 0) and (index >= MAX_CHAINS):
                     break
-                name, value = await parse_chain_element(chain_element.text_all)
+                name, value = parse_chain_element(chain_element.text_all)
                 # write to report if valid
                 if name and value:
                     write_raw_row(self.address, "Chain", name, value)
@@ -153,12 +151,10 @@ class DebankProfile:
             log.debug(f"Found {len(project_elements)} projects for {self.address}")
 
             # iterate through projects and parse if valid
-            for portfolio_element in project_elements:
-                if (MAX_PROJECTS > 0) and (
-                    project_elements.index(portfolio_element) >= MAX_PROJECTS
-                ):
+            for index, portfolio_element in enumerate(project_elements):
+                if (MAX_PROJECTS > 0) and (index >= MAX_PROJECTS):
                     break
-                name, value = await parse_project_element(portfolio_element.text_all)
+                name, value = parse_project_element(portfolio_element.text_all)
                 if name and value:
                     write_raw_row(self.address, "Project", name, value)
 
@@ -174,12 +170,11 @@ class DebankProfile:
             "div[class^='db-table TokenWallet_table'] div[class*='db-table-row']"
         )
         log.debug(f"Found {len(token_elements)} tokens")
-        for token_element in token_elements:
+        for index, token_element in enumerate(token_elements):
 
-            index = token_elements.index(token_element)
             if (MAX_TOKENS > 0) and (index >= MAX_TOKENS):
                 break
-            name, usd_value, amount = await parse_token_element(token_element.text_all)
+            name, usd_value, amount = parse_token_element(token_element.text_all)
 
             if name and usd_value and amount:
                 write_raw_row(self.address, "Token", name, f"{usd_value}|{amount}")
