@@ -4,7 +4,10 @@ from nordvpn_utils import vpn_rotation
 import asyncio
 import reporter
 import random
+import argparse
+import graph_generator
 from logger import get_logger
+from config import SAVE_GRAPHS
 
 # Initialize Logger
 log = get_logger(__name__)
@@ -132,6 +135,12 @@ async def main(addresses_map: dict):
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Debank Profile Scraper")
+    parser.add_argument(
+        "--graphs", action="store_true", help="Display graphs after processing"
+    )
+    args = parser.parse_args()
+
     # load addresses from file
     try:
         address_order_map = reporter.load_address_order(ADDRESSES_FILE)
@@ -151,3 +160,10 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log.warning("Script interrupted by user.")
         exit(0)
+
+    # Generate graphs if requested or enabled in config
+    if args.graphs or SAVE_GRAPHS:
+        try:
+            graph_generator.generate_graphs(show_graphs=args.graphs)
+        except Exception as e:
+            log.error(f"Error generating graphs: {e}")

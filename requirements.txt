@@ -2,3 +2,6 @@ nodriver
 fake-useragent
 openpyxl
 nordvpn-switcher-pro
+pandas
+seaborn
+matplotlib

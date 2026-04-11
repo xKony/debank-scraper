@@ -31,4 +31,8 @@ PROXY_FILE = "proxies.txt"  # file with list of proxies to use (if USE_PROXY is 
 ### OTHER SETTINGS ###
 LOG_LEVEL = "INFO"  # logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
 SAVE_LOGS = False  # whether to save browser logs to files
-HEADLESS_BROWSER = False  # whether to run browser in headless mode
+HEADLESS_BROWSER = True  # whether to run browser in headless mode
+
+### GRAPHS ###
+SAVE_GRAPHS = True  # whether to save figures automatically
+GRAPHS_DIR = "graphs"  # directory to save generated graphs

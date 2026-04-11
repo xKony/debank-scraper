@@ -2,6 +2,7 @@
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![Asyncio](https://img.shields.io/badge/Asyncio-Concurrency-green)
+![Seaborn](https://img.shields.io/badge/Seaborn-Visualization-orange)
 ![Status](https://img.shields.io/badge/Status-Active-success)
 
 <sub>this is my first Python project using an object-oriented structure - still learning</sub>
@@ -10,13 +11,14 @@
 
 This project is a high-performance, asynchronous tool designed to fetch crypto portfolio balances from DeBank.
 
-Built using `nodriver` for robust browser automation, this tool is engineered to evade detection through fingerprint randomization, User-Agent rotation, and integrated NordVPN IP switching. It processes a list of wallet addresses and generates comprehensive reports in both CSV and XLSX _(MS Excel)_ formats, organizing data by Total Balance, Chains and Projects.
+Built using `nodriver` for robust browser automation, this tool is engineered to evade detection through fingerprint randomization, User-Agent rotation, and integrated NordVPN IP switching. It processes a list of wallet addresses and generates comprehensive reports in both CSV and XLSX _(MS Excel)_ formats, organizing data by Total Balance, Chains and Projects. Now includes **automated data visualization** to analyze your portfolio distribution at a glance.
 
 _Partially **vibe-coded**, built for broke people like me that need to check balances for multiple addresses but don't have money to use Debank API._
 
 ## ✨ Key Features
 
 - **Asynchronous Concurrency:** Uses `asyncio` with Semaphores to process multiple addresses simultaneously without overloading system resources.
+- **Data Visualization:** Automatically generates professional-looking graphs (Boxplots, Histograms, Bar Charts) using `Seaborn` to visualize balance distribution across wallets, chains, and projects.
 - **Anti-Detection:**
   - Utilizes **nodriver** as the browser base.
   - Rotates User-Agents via `fake_useragent`.
@@ -32,15 +34,16 @@ _Partially **vibe-coded**, built for broke people like me that need to check bal
 
 ```text
 └── results/             # Generated CSV/XLSX files
+└── graphs/              # Automatically generated PNG plots
 └── logs/                # Saved logs (optional)
 ├── addresses.txt        # Input file containing wallet addresses
-├── proxies.txt          # Input file for proxies (optional, not working anyway)
 ├── browser_handler.py   # Handles DeBank class, parsing and navigation
+├── graph_generator.py   # NEW: Visualization logic using Seaborn/Pandas
 ├── nodriver_utils.py    # Handles nodriver initialization
 ├── nordvpn_utils.py     # Handles NordVPN rotation
 ├── reporter.py          # Manages data aggregation, formatting, and file writing
 ├── config.py            # Central configuration file for thresholds and settings
-├── main.py              # Entry point (orchestrator)
+├── main.py              # Entry point (orchestrator) with CLI flags
 ├── parsers.py           # Handles parsing balances to correct format
 ├── logger.py            # Logs things
 ```
@@ -60,58 +63,51 @@ cd debank-scraper
 pip install -r requirements.txt
 ```
 
-_(Ensure you have nodriver, fake_useragent, nordvpn-switcher-pro and openpyxl installed)._
+_(Ensure you have nodriver, pandas, seaborn, matplotlib, and openpyxl installed)._
 
 ## ⚙️ Configuration
 
-All settings are managed in config.py. Below is a breakdown of available options:
+All settings are managed in `config.py`. Below is a breakdown of new and critical options:
 
 ### Connection & Privacy
 
 | Setting       | Type   | Description                                                                |
 | ------------- | ------ | -------------------------------------------------------------------------- |
-| `USE_PROXY`   | `bool` | Enable/Disable proxy usage.                                                |
 | `USE_NORDVPN` | `bool` | Enable/Disable NordVPN IP rotation.                                        |
 | `BATCH_SIZE`  | `int`  | Number of addresses to process before rotating IP (e.g., randint(10, 20)). |
-| `DEBANK_URL`  | `str`  | Base URL for the profile pages.                                            |
+| `MAX_THREADS` | `int`  | Number of concurrent browser instances/tabs.                               |
 
-### Data Processing
+### Visualization & Files
 
-| Setting                     | Type    | Description                                         |
-| --------------------------- | ------- | --------------------------------------------------- |
-| `CHAINS`                    | `bool`  | Scrape chain-specific data.                         |
-| `PROJECTS`                  | `bool`  | Scrape DeFi project positions.                      |
-| `TOKENS`                    | `bool`  | Scrape individual tokens (Currently not working).   |
-| `MINIMUM_THRESHOLD_CHAIN`   | `float` | Minimum USD value to include a chain in the report. |
-| `MINIMUM_THRESHOLD_PROJECT` | `float` | Minimum USD value to include a project position.    |
-| `MAX_THREADS`               | `int`   | Number of concurrent browser instances/tabs.        |
-
-### Data Processing
-
-| Setting            | Type   | Description                                                        |
-| ------------------ | ------ | ------------------------------------------------------------------ |
-| `CSV_OUTPUT`       | `bool` | Generate `.csv` files.                                             |
-| `EXCEL_OUTPUT`     | `bool` | Generate `.xlsx` files (with multiple sheets).                     |
-| `ADDRESSES_FILE`   | `str`  | Path to the input list of addresses.                               |
-| `HEADLESS_BROWSER` | `bool` | Run browser in background (True) or visible (False). `(debugging)` |
-
-<sub>_more in `config.py`_</sub>
+| Setting         | Type   | Description                                                              |
+| --------------- | ------ | ------------------------------------------------------------------------ |
+| `SAVE_GRAPHS`   | `bool` | Automatically generate and save PNG plots after each run.                |
+| `GRAPHS_DIR`    | `str`  | Directory where plots are stored.                                        |
+| `CSV_OUTPUT`    | `bool` | Generate `.csv` files.                                                   |
+| `EXCEL_OUTPUT`  | `bool` | Generate `.xlsx` files (with multiple sheets).                           |
+| `ADDRESSES_FILE`| `str`  | Path to the input list of addresses.                                     |
 
 ## 🚀 Usage
 
-1.**Prepare Input:**
+1. **Prepare Input:**
+   Add the EVM wallet addresses you wish to check into `addresses.txt`, one per line.
 
-Add the EVM wallet addresses you wish to check into addresses.txt, one per line.
+2. **Run the Scraper:**
+   ```Bash
+   python main.py
+   ```
 
-2.**Run the Script:**
+3. **Run with Interactive Graphs:**
+   To see the plots immediately after the scraping finishes:
+   ```Bash
+   python main.py --graphs
+   ```
 
-```Bash
-python main.py
-```
-
-3.**View Results:**
-
-Check the results folder for the generated Excel or CSV files.
+4. **Regenerate Graphs only:**
+   If you already have data in `results/csv/` and just want to update the plots:
+   ```Bash
+   python graph_generator.py
+   ```
 
 ## ⚠️ Disclaimer
 
@@ -125,6 +121,7 @@ This tool is developed for **educational purposes only**.
 
 - proxy handling
 - token parsing
+- more advanced analytics (PnL tracking)
 
 ## 📜 License
 
